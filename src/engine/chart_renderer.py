@@ -4,14 +4,22 @@ High-resolution financial and maritime chart renderer for institutional macro re
 
 import os
 from typing import Dict, List, Tuple
-import matplotlib
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
+try:
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    import matplotlib.dates as mdates
+    HAS_MATPLOTLIB = True
+except Exception:
+    HAS_MATPLOTLIB = False
+    plt = None
+    mdates = None
+
 import pandas as pd
 import numpy as np
 from datetime import datetime
 from ..data.historical_baselines import generate_time_series_data
+
 
 
 # Chart theme styling constants
