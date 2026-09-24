@@ -137,7 +137,12 @@ async def telemetry_broadcast_loop():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global broadcaster_task
-    broadcaster_task = asyncio.create_task(telemetry_broadcast_loop())
+    is_serverless = bool(os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"))
+    if not is_serverless:
+        try:
+            broadcaster_task = asyncio.create_task(telemetry_broadcast_loop())
+        except Exception as e:
+            logger.warning(f"Could not start background broadcast loop: {e}")
     yield
     if broadcaster_task:
         broadcaster_task.cancel()
