@@ -2,8 +2,12 @@ import sys
 import os
 
 # Add workspace root to Python path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if root_dir not in sys.path:
+    sys.path.insert(0, root_dir)
 
 from src.api.server import app
 
-# Vercel Serverless Function entrypoint
+# Vercel Serverless Function entrypoints
+handler = app
+

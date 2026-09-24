@@ -226,6 +226,7 @@ async def websocket_telemetry_endpoint(websocket: WebSocket):
 
 
 @app.get("/api/health")
+@app.get("/health")
 async def health_check():
     return {
         "status": "healthy",
@@ -237,6 +238,7 @@ async def health_check():
 
 
 @app.get("/api/ai-status")
+@app.get("/ai-status")
 async def get_ai_status():
     """Returns whether a server-side Gemini API key is configured."""
     has_key = bool(os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY"))
@@ -249,6 +251,7 @@ async def get_ai_status():
 
 
 @app.get("/api/metrics")
+@app.get("/metrics")
 async def get_live_metrics():
     """Returns current real-time headline metrics and market state."""
     positions = stream_engine.step_simulation(delta_minutes=0.0)
@@ -262,6 +265,7 @@ async def get_live_metrics():
 
 
 @app.get("/api/vessels")
+@app.get("/vessels")
 async def get_live_vessels():
     """Steps simulation and returns real-time positions for all vessels."""
     positions = stream_engine.step_simulation(delta_minutes=15.0)
@@ -282,6 +286,7 @@ async def get_live_vessels():
 
 
 @app.get("/api/engines/maritime")
+@app.get("/engines/maritime")
 async def get_maritime_engine():
     """Engine 1: Maritime Flow Intelligence."""
     positions = stream_engine.step_simulation(delta_minutes=0.0)
@@ -289,24 +294,28 @@ async def get_maritime_engine():
 
 
 @app.get("/api/engines/energy")
+@app.get("/engines/energy")
 async def get_energy_engine():
     """Engine 2: Energy Intelligence."""
     return energy_engine.get_summary()
 
 
 @app.get("/api/engines/supply-chain")
+@app.get("/engines/supply-chain")
 async def get_supply_chain_engine():
     """Engine 3: Supply Chain Risk Intelligence."""
     return supply_chain_engine.get_summary()
 
 
 @app.get("/api/engines/macro-nowcast")
+@app.get("/engines/macro-nowcast")
 async def get_macro_nowcast_engine():
     """Engine 4: Macro Nowcasting."""
     return macro_nowcast_engine.get_summary()
 
 
 @app.get("/api/engines/carbon")
+@app.get("/engines/carbon")
 async def get_carbon_engine():
     """Engine 5: Carbon Intelligence."""
     positions = stream_engine.step_simulation(delta_minutes=0.0)
@@ -314,12 +323,14 @@ async def get_carbon_engine():
 
 
 @app.get("/api/engines/working-capital")
+@app.get("/engines/working-capital")
 async def get_working_capital_engine():
     """Engine 6: Working Capital Intelligence."""
     return working_capital_engine.get_summary()
 
 
 @app.get("/api/chain-of-intelligence")
+@app.get("/chain-of-intelligence")
 async def get_chain_of_intelligence():
     """The 6-Step Chain of Intelligence Cascade."""
     positions = stream_engine.step_simulation(delta_minutes=0.0)
@@ -328,6 +339,7 @@ async def get_chain_of_intelligence():
 
 
 @app.get("/api/geofences")
+@app.get("/geofences")
 async def get_geofences():
     """Returns coordinates and descriptions of all monitored maritime chokepoint zones."""
     fences = []
@@ -342,6 +354,7 @@ async def get_geofences():
 
 
 @app.get("/api/exhibits/data")
+@app.get("/exhibits/data")
 async def get_exhibits_data():
     """Returns structured time series data for interactive frontend charts (Exhibits 1, 2, 3)."""
     fujairah = traffic_engine.get_fujairah_series()
@@ -370,6 +383,7 @@ def get_pdf_output_path() -> str:
 
 
 @app.post("/api/generate-report")
+@app.post("/generate-report")
 async def trigger_report_generation(req: Optional[ReportGenerationRequest] = None):
     """
     Synthesizes live telemetry and generates the institutional PDF report using Gemini AI.
@@ -404,6 +418,7 @@ async def trigger_report_generation(req: Optional[ReportGenerationRequest] = Non
 
 
 @app.get("/api/download-report")
+@app.get("/download-report")
 async def download_report():
     """Serves the latest compiled PDF newsletter."""
     pdf_path = get_pdf_output_path()
@@ -415,6 +430,7 @@ async def download_report():
         media_type="application/pdf",
         filename="Macro_Insights_Newsletter_RealTime.pdf"
     )
+
 
 
 # Mount static web frontend for local execution only (Vercel CDN handles static frontend)
