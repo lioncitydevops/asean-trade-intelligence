@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ASEAN Trade, Energy & Supply Chain Intelligence Platform</title>
+  <!-- Google Fonts & Modern Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+</head>
+<body>
+
+  <!-- Top Executive Navigation Header -->
+  <header class="top-header">
+    <div class="brand-section">
+      <div class="brand-logo-badge">ASEAN</div>
+      <div class="brand-title">
+        <h1>ASEAN TRADE, ENERGY & SUPPLY CHAIN INTELLIGENCE</h1>
+        <p>MULTI-ENGINE PHYSICAL FLOWS, MACRO NOWCASTING & WORKING CAPITAL DRAG</p>
+      </div>
+    </div>
+
+    <!-- Real-Time Multi-Engine Live Ribbon Ticker -->
+    <div class="market-ribbon">
+      <div class="market-item">
+        <span class="market-label">BRENT PROMPT:</span>
+        <span class="market-val up" id="ticker-brent">$104.50</span>
+      </div>
+      <div class="market-item">
+        <span class="market-label">TAPIS ASEAN:</span>
+        <span class="market-val up" id="ticker-tapis">$108.20</span>
+      </div>
+      <div class="market-item">
+        <span class="market-label">SG GASOIL CRACK:</span>
+        <span class="market-val alert" id="ticker-gasoil">+$28.50/bbl</span>
+      </div>
+      <div class="market-item">
+        <span class="market-label">AMTVI NOWCAST:</span>
+        <span class="market-val up" id="ticker-amtvi">114.2 (+3.8%)</span>
+      </div>
+      <div class="market-item">
+        <span class="market-label">FREIGHT CO2:</span>
+        <span class="market-val warn" id="ticker-co2">142.5k t/d</span>
+      </div>
+      <div class="market-item">
+        <span class="market-label">WC CASH LOCKUP:</span>
+        <span class="market-val alert" id="ticker-cash">$4.85B (+8.4d CCC)</span>
+      </div>
+    </div>
+
+    <!-- Header Actions -->
+    <div class="header-actions">
+      <div class="live-pulse-container" id="ws-status-badge">
+        <div class="pulse-dot" id="ws-pulse-dot"></div>
+        <span id="ws-status-text">CONNECTING TELEMETRY...</span>
+      </div>
+      <button class="btn-primary" id="btn-open-report-modal">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+        Generate ASEAN Intelligence Briefing (PDF)
+      </button>
+    </div>
+  </header>
+
+  <!-- Engine Switcher & View Selector Bar -->
+  <nav class="engine-bar">
+    <div class="engine-label">SELECT ENGINE:</div>
+    <div class="engine-tabs">
+      <button class="engine-btn active" data-engine="chain">
+        <span class="engine-dot dot-chain"></span>
+        CHAIN OF INTELLIGENCE (CASCADE)
+      </button>
+      <button class="engine-btn" data-engine="maritime">
+        <span class="engine-dot dot-maritime"></span>
+        1. Maritime Flow
+      </button>
+      <button class="engine-btn" data-engine="energy">
+        <span class="engine-dot dot-energy"></span>
+        2. Energy Intelligence
+      </button>
+      <button class="engine-btn" data-engine="risk">
+        <span class="engine-dot dot-risk"></span>
+        3. Supply Chain Risk
+      </button>
+      <button class="engine-btn" data-engine="macro">
+        <span class="engine-dot dot-macro"></span>
+        4. Macro Nowcasting
+      </button>
+      <button class="engine-btn" data-engine="carbon">
+        <span class="engine-dot dot-carbon"></span>
+        5. Carbon Intelligence
+      </button>
+      <button class="engine-btn" data-engine="capital">
+        <span class="engine-dot dot-capital"></span>
+        6. Working Capital (Add-On)
+      </button>
+    </div>
+  </nav>
+
+  <main class="app-container">
+
+    <!-- KPI Grid Header -->
+    <section class="kpi-grid" id="kpi-grid-container">
+      <!-- KPI 1: ASEAN Maritime Flow -->
+      <div class="kpi-card kpi-cyan">
+        <div class="kpi-title">Malacca & Singapore Strait Flow</div>
+        <div class="kpi-value" id="kpi-1-val">42 Transits/Day</div>
+        <div class="kpi-sub" id="kpi-1-sub">
+          Active DWT: <span class="up">18.4M bbls</span> | Malacca: 18 | SG: 24
+        </div>
+      </div>
+
+      <!-- KPI 2: Energy Crack Spread -->
+      <div class="kpi-card kpi-gold">
+        <div class="kpi-title">Singapore Gasoil & Tapis Premium</div>
+        <div class="kpi-value" id="kpi-2-val">+$28.50/bbl</div>
+        <div class="kpi-sub" id="kpi-2-sub">
+          Tapis Sweet: <span class="warn">$108.20</span> | JKM LNG: $14.80
+        </div>
+      </div>
+
+      <!-- KPI 3: Supply Chain Risk & Bottlenecks -->
+      <div class="kpi-card kpi-amber">
+        <div class="kpi-title">Malacca Strait Risk Score</div>
+        <div class="kpi-value" id="kpi-3-val">78.5 / 100</div>
+        <div class="kpi-sub" id="kpi-3-sub">
+          Cape Diversion: <span class="alert">+12.4 Days</span> | SG Dwell: 3.4d
+        </div>
+      </div>
+
+      <!-- KPI 4: Working Capital Drag -->
+      <div class="kpi-card kpi-rose">
+        <div class="kpi-title">Transit Inventory Cash Lockup</div>
+        <div class="kpi-value" id="kpi-4-val">$4,850 Million</div>
+        <div class="kpi-sub" id="kpi-4-sub">
+          CCC Expansion: <span class="alert">+8.4 Days</span> | SCF Gap: $1.2B
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION A: CHAIN OF INTELLIGENCE CASCADE VIEW (DEFAULT FOCUS) -->
+    <section class="cascade-section" id="section-chain-cascade">
+      <div class="panel-card glass-panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+            THE CHAIN OF INTELLIGENCE: PHYSICAL MOVEMENTS TO EXECUTIVE DECISION CASCADE
+          </div>
+          <span class="badge-tag badge-live">LIVE CASCADE RUNNING</span>
+        </div>
+
+        <div class="chain-stepper">
+          <!-- Step 1: What is moving -->
+          <div class="step-card step-1">
+            <div class="step-header">
+              <span class="step-num">01</span>
+              <span class="step-title">WHAT IS MOVING</span>
+            </div>
+            <div class="step-headline" id="step-1-head">Tracking 120 Vessels & 38.4M bbls across ASEAN Maritime Chokepoints</div>
+            <div class="step-desc" id="step-1-desc">AIS radar monitors container ships, tankers, and LNG carriers transiting Malacca, Singapore Strait, Sunda, and Lombok deepwater corridors.</div>
+            <div class="step-metrics" id="step-1-metrics">
+              <span class="metric-pill">Malacca: 18</span>
+              <span class="metric-pill">Singapore: 24</span>
+              <span class="metric-pill">Lombok: 5</span>
+            </div>
+          </div>
+
+          <!-- Step 2: What has changed -->
+          <div class="step-card step-2">
+            <div class="step-header">
+              <span class="step-num">02</span>
+              <span class="step-title">WHAT HAS CHANGED</span>
+            </div>
+            <div class="step-headline" id="step-2-head">Cape Rerouting (+12.4d) + Gasoil Crack Spread Spikes to $28.50/bbl</div>
+            <div class="step-desc" id="step-2-desc">Red Sea diversions force long-haul vessels around Africa, expanding container berth dwell times in Singapore to 3.4 days.</div>
+            <div class="step-metrics" id="step-2-metrics">
+              <span class="metric-pill alert">Cape Reroute: +12.4d</span>
+              <span class="metric-pill warn">SG Dwell: 3.4d</span>
+            </div>
+          </div>
+
+          <!-- Step 3: Why it matters -->
+          <div class="step-card step-3">
+            <div class="step-header">
+              <span class="step-num">03</span>
+              <span class="step-title">WHY IT MATTERS</span>
+            </div>
+            <div class="step-headline" id="step-3-head">Input Cost Inflation & AMTVI Trade Nowcast at 114.2 (+3.8% YoY)</div>
+            <div class="step-desc" id="step-3-desc">Refining margins and freight surcharges increase ASEAN industrial input costs while high-frequency trade nowcasts remain buoyant.</div>
+            <div class="step-metrics" id="step-3-metrics">
+              <span class="metric-pill up">AMTVI: 114.2</span>
+              <span class="metric-pill up">PMI Nowcast: 51.8</span>
+            </div>
+          </div>
+
+          <!-- Step 4: Which company is exposed -->
+          <div class="step-card step-4">
+            <div class="step-header">
+              <span class="step-num">04</span>
+              <span class="step-title">WHICH COMPANY / SECTOR IS EXPOSED</span>
+            </div>
+            <div class="step-headline" id="step-4-head">Semiconductors (SG/MY), Refiners (Petronas/Pertamina/PTT) & Utilities</div>
+            <div class="step-desc" id="step-4-desc">Penang and Singapore chip plants face component delays; Map Ta Phut and Jurong refineries experience crude arrival jitter.</div>
+            <div class="step-metrics" id="step-4-metrics">
+              <span class="metric-pill alert">Semicon Exposure: 88.5</span>
+              <span class="metric-pill warn">Refining Exposure: 82.0</span>
+            </div>
+          </div>
+
+          <!-- Step 5: What happens to cash & carbon -->
+          <div class="step-card step-5">
+            <div class="step-header">
+              <span class="step-num">05</span>
+              <span class="step-title">WHAT HAPPENS TO CASH & CARBON</span>
+            </div>
+            <div class="step-headline" id="step-5-head">$4.85B Trapped Transit Inventory & +34.2% Scope 3 Carbon Penalty</div>
+            <div class="step-desc" id="step-5-desc">Transit delays expand corporate Cash Conversion Cycles by +8.4 days while long-haul diversions emit 142.5k tonnes of CO2e daily.</div>
+            <div class="step-metrics" id="step-5-metrics">
+              <span class="metric-pill alert">Cash Lockup: $4.85B</span>
+              <span class="metric-pill alert">CCC: +8.4 Days</span>
+              <span class="metric-pill warn">CO2 Penalty: +34.2%</span>
+            </div>
+          </div>
+
+          <!-- Step 6: What management should investigate -->
+          <div class="step-card step-6">
+            <div class="step-header">
+              <span class="step-num">06</span>
+              <span class="step-title">WHAT MANAGEMENT SHOULD INVESTIGATE</span>
+            </div>
+            <div class="step-headline" id="step-6-head">Activate Supply Chain Finance ($1.2B Buffer) & Hedge Middle Distillate Spreads</div>
+            <div class="step-desc" id="step-6-desc">Executive committee should draw on pre-approved SCF facilities, hedge gasoil cracks, and re-route urgent cargo via Lombok.</div>
+            <div class="step-metrics" id="step-6-metrics">
+              <span class="metric-pill up">SCF Liquidity: $1.2B</span>
+              <span class="metric-pill alert">Carrying Penalty: $18.4M/mo</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION B: MAIN WORKSPACE (MAP + ENGINE ANALYTICS) -->
+    <section class="workspace-grid">
+      
+      <!-- Live Maritime & Trade Radar Map Panel -->
+      <div class="panel-card">
+        <div class="panel-header">
+          <div class="panel-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path><path d="M2 12h20"></path></svg>
+            ASEAN Maritime Flow & Global Trade Chokepoint Spatial Tracking
+          </div>
+          <span style="font-size: 11px; color: var(--text-dim);" id="vessel-count-label">Tracking Vessels...</span>
+        </div>
+
+        <!-- Geospatial Controls & Preset Toolbar -->
+        <div class="map-toolbar">
+          <div class="preset-btn-group">
+            <span style="color: var(--text-dim); margin-right: 4px;">PRESETS:</span>
+            <button class="map-btn active" data-preset="asean">ASEAN Focus</button>
+            <button class="map-btn" data-preset="malacca">Malacca Strait</button>
+            <button class="map-btn" data-preset="sunda">Sunda & Lombok</button>
+            <button class="map-btn" data-preset="bintulu">Bintulu & SCS</button>
+            <button class="map-btn" data-preset="global">Global</button>
+          </div>
+          <div class="layer-btn-group">
+            <span style="color: var(--text-dim); margin-right: 4px;">LAYERS:</span>
+            <button class="map-btn toggle-on" id="btn-toggle-trails">Trails [ON]</button>
+            <button class="map-btn toggle-on" id="btn-toggle-density">Density [ON]</button>
+            <button class="map-btn toggle-on" id="btn-toggle-geofences">Geofences [ON]</button>
+          </div>
+        </div>
+        
+        <div class="map-wrapper">
+          <div id="map"></div>
+        </div>
+      </div>
+
+      <!-- Institutional Analytics & Multi-Engine Exhibits Panel -->
+      <div class="panel-card">
+        <div class="panel-header">
+          <div class="panel-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+            Multi-Engine Indicators & Empirical Baselines
+          </div>
+          <div class="tab-container">
+            <button class="tab-btn active" data-tab="tab-exhibit-1">Exhibit 1: Storage Hubs</button>
+            <button class="tab-btn" data-tab="tab-exhibit-2">Exhibit 2: Rerouting</button>
+            <button class="tab-btn" data-tab="tab-exhibit-3">Exhibit 3: ASEAN Demand</button>
+            <button class="tab-btn" data-tab="tab-exhibit-4">Exhibit 4: Carbon & Cash</button>
+          </div>
+        </div>
+
+        <div class="chart-wrapper">
+          <!-- Exhibit 1 -->
+          <div class="chart-card" id="tab-exhibit-1">
+            <div style="flex: 1; min-height: 280px; position: relative;">
+              <canvas id="chart-exhibit-1"></canvas>
+            </div>
+            <div class="chart-caption">
+              <b>Exhibit 1: Daily Tanker & Storage Inventory Presence in Key Hubs.</b> Tracking Singapore Onshore Commercial Stocks and Fujairah STS Turnover against historical 5-year baselines.
+            </div>
+          </div>
+
+          <!-- Exhibit 2 -->
+          <div class="chart-card" id="tab-exhibit-2" style="display: none;">
+            <div style="flex: 1; min-height: 280px; position: relative;">
+              <canvas id="chart-exhibit-2"></canvas>
+            </div>
+            <div class="chart-caption">
+              <b>Exhibit 2: Maritime Diversion & Rerouting Dynamics (Cape vs Suez vs Malacca).</b> Transit count trajectories demonstrating Cape of Good Hope rerouting delay (+12.4 days).
+            </div>
+          </div>
+
+          <!-- Exhibit 3 -->
+          <div class="chart-card" id="tab-exhibit-3" style="display: none;">
+            <div style="flex: 1; min-height: 280px; position: relative;">
+              <canvas id="chart-exhibit-3"></canvas>
+            </div>
+            <div class="chart-caption">
+              <b>Exhibit 3: Seaborne Trade & Demand Nowcast Indices for ASEAN Importers.</b> High-frequency AMTVI nowcasting rebased to 100 alongside India, China, and regional manufacturing PMIs.
+            </div>
+          </div>
+
+          <!-- Exhibit 4 -->
+          <div class="chart-card" id="tab-exhibit-4" style="display: none;">
+            <div style="flex: 1; min-height: 280px; position: relative;">
+              <canvas id="chart-exhibit-4"></canvas>
+            </div>
+            <div class="chart-caption">
+              <b>Exhibit 4: Carbon Emissions (Scope 3) & Working Capital Cash Lockup.</b> Correlation between shipping delay duration (+Days), corporate Cash Conversion Cycle (CCC), and freight CO2 penalties.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION C: SECTOR EXPOSURE & ANOMALY RADAR -->
+    <section class="telemetry-split-grid">
+      <!-- Sector Exposure Matrix -->
+      <div class="panel-card">
+        <div class="panel-header">
+          <div class="panel-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
+            ASEAN Corporate Sector Exposure Matrix (Engine 3 & 6)
+          </div>
+          <span class="badge-tag badge-sts" id="sector-count-badge">4 Key Hubs Exposed</span>
+        </div>
+        <div class="data-table-container">
+          <table class="intel-table">
+            <thead>
+              <tr>
+                <th>Industry Sector</th>
+                <th>Primary ASEAN Hubs</th>
+                <th>Risk Score</th>
+                <th>Bottleneck Driver</th>
+                <th>Recommended Action</th>
+              </tr>
+            </thead>
+            <tbody id="sector-table-body">
+              <tr>
+                <td><b>Semiconductors & Electronics</b></td>
+                <td>Penang, Singapore, N. Vietnam</td>
+                <td><span class="alert">88.5</span></td>
+                <td>SG container berth dwell & air freight squeeze</td>
+                <td>Increase safety stock by +14d</td>
+              </tr>
+              <tr>
+                <td><b>Refining & Petrochemicals</b></td>
+                <td>Map Ta Phut, Jurong, Kertih</td>
+                <td><span class="alert">82.0</span></td>
+                <td>Malacca VLCC draft limitations</td>
+                <td>Lighter via STS or Lombok bypass</td>
+              </tr>
+              <tr>
+                <td><b>Automotive & Heavy Industry</b></td>
+                <td>Eastern Seaboard TH, W. Java ID</td>
+                <td><span class="warn">74.2</span></td>
+                <td>Red Sea/Cape component delays</td>
+                <td>Dual-source from regional suppliers</td>
+              </tr>
+              <tr>
+                <td><b>Power Generation & Utilities</b></td>
+                <td>EGAT, Tenaga, PLN</td>
+                <td><span class="warn">69.0</span></td>
+                <td>JKM LNG spot volatility & berth queues</td>
+                <td>Optimize Bintulu pipeline gas terms</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Live Vessel & Anomaly Radar -->
+      <div class="panel-card">
+        <div class="panel-header">
+          <div class="panel-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+            Live AIS Vessel & Chokepoint Anomaly Radar
+          </div>
+          <span class="badge-tag badge-dark" id="dark-count-badge">Monitoring...</span>
+        </div>
+        <div class="data-table-container">
+          <table class="intel-table">
+            <thead>
+              <tr>
+                <th>Vessel Name</th>
+                <th>Vessel Type</th>
+                <th>Est. Cargo Load</th>
+                <th>Destination / Zone</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="vessels-table-body">
+              <tr><td colspan="5" style="text-align: center; color: var(--text-dim);">Listening for live AIS telemetry...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Live Alert Toast Banner -->
+  <div class="alert-toast" id="alert-toast">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"></polygon><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+    <div id="toast-message">Malacca Strait Congestion Spike Detected: Container Dwell Time +1.2d</div>
+  </div>
+
+  <!-- Modal for Report Generation -->
+  <div class="modal-backdrop" id="report-modal">
+    <div class="modal-window">
+      <div class="modal-header">
+        <div style="font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 8px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#DC2626" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+          Synthesize Institutional Briefing (PDF)
+        </div>
+        <button id="btn-close-modal" style="background: none; border: none; color: var(--text-dim); cursor: pointer; font-size: 18px;">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <p style="font-size: 12px; color: var(--text-muted); line-height: 1.5;">
+          Synthesize real-time telemetry across all 6 engines (Maritime Flow, Energy, Supply Chain Risk, Macro Nowcast, Carbon, Working Capital Drag) into an institutional PDF research briefing using Gemini AI.
+        </p>
+
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <label style="font-size: 11px; font-weight: 600; color: var(--text-muted);">SELECT GEMINI MODEL</label>
+          <select id="modal-model-select" style="background: var(--bg-panel); border: 1px solid var(--border-subtle); color: var(--text-main); padding: 8px 12px; border-radius: 6px; font-size: 12px;">
+            <option value="gemini-2.5-flash">Gemini 2.5 Flash (Ultra-Fast Macro Synthesis)</option>
+            <option value="gemini-3.0-flash">Gemini 3.0 Flash (Next-Gen Reasoning)</option>
+            <option value="gemini-2.5-pro">Gemini 2.5 Pro (Deep Econometric Analysis)</option>
+            <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+          </select>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <label style="font-size: 11px; font-weight: 600; color: var(--text-muted);">GEMINI API KEY (OPTIONAL OVERRIDE)</label>
+            <span id="ai-status-badge" style="font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 4px; background: rgba(59, 130, 246, 0.2); color: #93C5FD;">Checking...</span>
+          </div>
+          <input type="password" id="modal-gemini-key" placeholder="AIzaSy..." style="background: var(--bg-panel); border: 1px solid var(--border-subtle); color: var(--text-main); padding: 8px 12px; border-radius: 6px; font-size: 12px; font-family: var(--font-mono);">
+          <span style="font-size: 10px; color: var(--text-dim);" id="gemini-key-hint">If your environment has `GEMINI_API_KEY` configured, leave this blank.</span>
+        </div>
+
+        <div id="generation-progress" style="display: none; padding: 12px; background: var(--bg-panel); border: 1px solid var(--color-cyan); border-radius: 6px;">
+          <div style="display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--color-cyan);">
+            <div class="pulse-dot" style="background-color: var(--color-cyan); box-shadow: 0 0 8px var(--color-cyan);"></div>
+            <span id="progress-text">Synthesizing ASEAN Intelligence Briefing with Gemini AI...</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-secondary" id="btn-cancel-modal">Cancel</button>
+        <button class="btn-primary" id="btn-execute-generate">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+          Synthesize & Download Briefing (PDF)
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

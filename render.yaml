@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: maritime-oil-flow-backend
+    env: docker
+    dockerfilePath: ./Dockerfile
+    plan: standard
+    healthCheckPath: /api/health
+    envVars:
+      - key: PORT
+        value: 8000
+      - key: PYTHONUNBUFFERED
+        value: "1"
