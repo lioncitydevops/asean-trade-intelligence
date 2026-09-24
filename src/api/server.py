@@ -134,11 +134,20 @@ async def telemetry_broadcast_loop():
             await asyncio.sleep(2.5)
 
 
+IS_SERVERLESS = bool(
+    os.environ.get("VERCEL") or
+    os.environ.get("VERCEL_ENV") or
+    os.environ.get("VERCEL_REGION") or
+    os.environ.get("AWS_LAMBDA_FUNCTION_NAME") or
+    os.environ.get("AWS_EXECUTION_ENV") or
+    os.environ.get("LAMBDA_TASK_ROOT")
+)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global broadcaster_task
-    is_serverless = bool(os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"))
-    if not is_serverless:
+    if not IS_SERVERLESS:
         try:
             broadcaster_task = asyncio.create_task(telemetry_broadcast_loop())
         except Exception as e:
@@ -156,8 +165,9 @@ app = FastAPI(
     title="ASEAN Trade, Energy & Supply Chain Intelligence Platform",
     description="Multi-engine real-time AIS telemetry analysis, energy pricing, supply chain risk, carbon tracking, working capital drag, and macro nowcasting.",
     version="3.0.0",
-    lifespan=lifespan
+    lifespan=None if IS_SERVERLESS else lifespan
 )
+
 
 # Enable CORS for interactive UI development
 app.add_middleware(
@@ -434,10 +444,10 @@ async def download_report():
 
 
 # Mount static web frontend for local execution only (Vercel CDN handles static frontend)
-is_serverless = bool(os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"))
 web_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "web")
-if not is_serverless and os.path.exists(web_dir):
+if not IS_SERVERLESS and os.path.exists(web_dir):
     app.mount("/", StaticFiles(directory=web_dir, html=True), name="web")
+
 
 
 if __name__ == "__main__":
