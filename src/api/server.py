@@ -417,9 +417,10 @@ async def download_report():
     )
 
 
-# Mount static web frontend
+# Mount static web frontend for local execution only (Vercel CDN handles static frontend)
+is_serverless = bool(os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"))
 web_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "web")
-if os.path.exists(web_dir):
+if not is_serverless and os.path.exists(web_dir):
     app.mount("/", StaticFiles(directory=web_dir, html=True), name="web")
 
 
