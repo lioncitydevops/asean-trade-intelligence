@@ -117,6 +117,18 @@ def test_pdf_compilation():
     if os.path.exists(test_pdf):
         os.remove(test_pdf)
 
-    out = build_macro_newsletter_pdf(output_pdf_path=test_pdf, as_of_date="2026-09-16")
+    # Test real-time generation (as_of_date=None)
+    out = build_macro_newsletter_pdf(output_pdf_path=test_pdf)
     assert os.path.exists(out)
     assert os.path.getsize(out) > 50000
+
+
+def test_realtime_report_api():
+    with TestClient(app) as client:
+        res = client.post("/api/generate-report", json={})
+        assert res.status_code == 200
+        data = res.json()
+        assert data["status"] == "success"
+        assert "as_of_date" in data
+        assert "summary" in data
+        assert os.path.exists(data["pdf_path"])

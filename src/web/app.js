@@ -40,6 +40,7 @@ let showGeofences = true;
 let chartEx1, chartEx2, chartEx3, chartEx4;
 let wsClient = null;
 let currentEngine = "chain";
+let pollingTimer = null;
 
 // ASEAN Map Presets
 const CHOKEPOINTS = {
@@ -67,11 +68,13 @@ document.addEventListener("DOMContentLoaded", () => {
   initEngineTabs();
   initExhibitTabs();
   initCharts();
-  loadMetrics();
+  loadInitialTelemetry();
   loadGeofences();
   initReportModal();
   checkAIStatus();
   initWebSocket();
+  initPollingFallback();
+  startRealtimeClock();
 });
 
 // Initialize Leaflet Map
@@ -115,7 +118,7 @@ function initDensityZones() {
 function initToolbarControls() {
   // Preset buttons
   document.querySelectorAll("[data-preset]").forEach(btn => {
-    btn.addEventListener("click", (e) => {
+    btn.addEventListener("click", () => {
       document.querySelectorAll("[data-preset]").forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
       const key = btn.getAttribute("data-preset");
@@ -177,20 +180,13 @@ function initEngineTabs() {
 
 function updateEngineView(engine) {
   const sectionCascade = document.getElementById("section-chain-cascade");
-  if (engine === "chain") {
-    sectionCascade.style.display = "block";
-  } else {
-    sectionCascade.style.display = "none";
+  if (sectionCascade) {
+    sectionCascade.style.display = (engine === "chain") ? "block" : "none";
   }
-
-  // Update KPI card focus depending on engine
-  const kpi1Title = document.querySelector("#kpi-grid-container .kpi-card:nth-child(1) .kpi-title");
-  const kpi2Title = document.querySelector("#kpi-grid-container .kpi-card:nth-child(2) .kpi-title");
 
   if (engine === "maritime") {
     map.flyTo([4.5, 107.0], 5, { duration: 1 });
   } else if (engine === "energy") {
-    // Exhibit 1 focus
     switchTab("tab-exhibit-1");
   } else if (engine === "risk") {
     switchTab("tab-exhibit-2");
@@ -245,9 +241,9 @@ function renderExhibit1(records) {
   const ctx = document.getElementById("chart-exhibit-1");
   if (!ctx) return;
 
-  const labels = records.length ? records.map(r => r.date_str.substring(5)) : ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep"];
-  const maData = records.length ? records.map(r => r.seven_day_ma) : [42, 44, 15, 18, 30, 48, 55, 62, 67];
-  const avgData = records.length ? records.map(r => r.historical_avg) : [48, 48, 48, 48, 48, 48, 48, 48, 48];
+  const labels = records.length ? records.map(r => r.date_str.substring(5)) : ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct"];
+  const maData = records.length ? records.map(r => r.seven_day_ma) : [42, 44, 15, 18, 30, 48, 55, 62, 67, 68];
+  const avgData = records.length ? records.map(r => r.historical_avg) : [48, 48, 48, 48, 48, 48, 48, 48, 48, 48];
 
   if (chartEx1) chartEx1.destroy();
   chartEx1 = new Chart(ctx, {
@@ -282,9 +278,9 @@ function renderExhibit2(records) {
   const ctx = document.getElementById("chart-exhibit-2");
   if (!ctx) return;
 
-  const labels = records.length ? records.map(r => r.date_str.substring(5)) : ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep"];
-  const suezData = records.length ? records.map(r => r.suez_7d_ma) : [15, 16, 16, 17, 18, 19, 21, 22, 24];
-  const bemData = records.length ? records.map(r => r.bem_7d_ma) : [20, 21, 19, 18, 17, 16, 14, 12, 10];
+  const labels = records.length ? records.map(r => r.date_str.substring(5)) : ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct"];
+  const suezData = records.length ? records.map(r => r.suez_7d_ma) : [15, 16, 16, 17, 18, 19, 21, 22, 24, 25];
+  const bemData = records.length ? records.map(r => r.bem_7d_ma) : [20, 21, 19, 18, 17, 16, 14, 12, 10, 11];
 
   if (chartEx2) chartEx2.destroy();
   chartEx2 = new Chart(ctx, {
@@ -314,10 +310,10 @@ function renderExhibit3(records) {
   const ctx = document.getElementById("chart-exhibit-3");
   if (!ctx) return;
 
-  const labels = records.length ? records.map(r => r.date_str.substring(5)) : ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep"];
-  const amtvi = [100, 102, 104, 107, 109, 111, 112, 113, 114.2];
-  const india = records.length ? records.map(r => r.india_index) : [100, 100, 110, 122, 134, 138, 140, 141, 142.5];
-  const china = records.length ? records.map(r => r.china_index) : [100, 100, 85, 70, 60, 59, 60, 59, 59];
+  const labels = records.length ? records.map(r => r.date_str.substring(5)) : ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct"];
+  const amtvi = [100, 102, 104, 107, 109, 111, 112, 113, 114.2, 114.8];
+  const india = records.length ? records.map(r => r.india_index) : [100, 100, 110, 122, 134, 138, 140, 141, 142.5, 143.0];
+  const china = records.length ? records.map(r => r.china_index) : [100, 100, 85, 70, 60, 59, 60, 59, 59, 58.5];
 
   if (chartEx3) chartEx3.destroy();
   chartEx3 = new Chart(ctx, {
@@ -409,17 +405,138 @@ function getChartOptions(yTitle) {
   };
 }
 
-// Load Metrics & Geofences
-function loadMetrics() {
-  fetch(apiUrl("/api/vessels"))
-    .then(r => r.json())
-    .then(data => {
-      updateVesselsOnMap(data.vessels || []);
-      updateTables(data);
-    })
-    .catch(err => console.warn("Failed loading live metrics", err));
+// Real-Time Telemetry Dispatcher - Updates all UI feeds
+function handleRealtimeTelemetry(data) {
+  if (!data) return;
+
+  // 1. Vessels on Map & Table
+  if (data.vessels) {
+    updateVesselsOnMap(data.vessels);
+    updateTables(data);
+  }
+
+  // 2. Top Market Ribbon Ticker
+  if (data.market || data.engines) {
+    updateMarketRibbon(data.market, data.engines);
+  }
+
+  // 3. KPI Cards
+  if (data.metrics || data.engines) {
+    updateKPICards(data.metrics, data.engines);
+  }
+
+  // 4. Chain of Intelligence Cascade Steps
+  if (data.chain_cascade) {
+    updateChainCascade(data.chain_cascade);
+  }
+
+  // 5. Dark Fleet Badge
+  if (data.dark_fleet_events) {
+    const darkBadge = document.getElementById("dark-count-badge");
+    if (darkBadge) {
+      darkBadge.textContent = `${data.dark_fleet_events.length} Dark Transits Tracked`;
+    }
+  }
 }
 
+// Update Top Market Ribbon Ticker in real time
+function updateMarketRibbon(market, engines) {
+  const brentEl = document.getElementById("ticker-brent");
+  const tapisEl = document.getElementById("ticker-tapis");
+  const gasoilEl = document.getElementById("ticker-gasoil");
+  const amtviEl = document.getElementById("ticker-amtvi");
+  const co2El = document.getElementById("ticker-co2");
+  const cashEl = document.getElementById("ticker-cash");
+
+  const eState = engines && engines.energy && engines.energy.state ? engines.energy.state : null;
+  const mnState = engines && engines.macro_nowcast && engines.macro_nowcast.state ? engines.macro_nowcast.state : null;
+  const cState = engines && engines.carbon && engines.carbon.state ? engines.carbon.state : null;
+  const wcState = engines && engines.working_capital && engines.working_capital.state ? engines.working_capital.state : null;
+
+  if (market && brentEl) {
+    brentEl.textContent = `$${market.brent_prompt_price.toFixed(2)}`;
+  }
+  if (tapisEl) {
+    const val = eState ? eState.tapis_asean_usd : (market ? market.brent_prompt_price + 3.7 : 108.20);
+    tapisEl.textContent = `$${val.toFixed(2)}`;
+  }
+  if (gasoilEl) {
+    const crack = eState ? eState.singapore_gasoil_crack_usd : 28.50;
+    gasoilEl.textContent = `+$${crack.toFixed(2)}/bbl`;
+  }
+  if (amtviEl) {
+    const idx = mnState ? mnState.asean_maritime_trade_volume_index : 114.2;
+    const yoy = mnState ? mnState.amtvi_yoy_pct : 3.8;
+    amtviEl.textContent = `${idx.toFixed(1)} (+${yoy.toFixed(1)}%)`;
+  }
+  if (co2El) {
+    const co2 = cState ? (cState.daily_regional_freight_co2_tonnes / 1e3).toFixed(1) : "142.5";
+    co2El.textContent = `${co2}k t/d`;
+  }
+  if (cashEl) {
+    const cash = wcState ? (wcState.transit_inventory_cash_lockup_usd_millions / 1e3).toFixed(2) : "4.85";
+    const ccc = wcState ? wcState.cash_conversion_cycle_expansion_days.toFixed(1) : "8.4";
+    cashEl.textContent = `$${cash}B (+${ccc}d CCC)`;
+  }
+}
+
+// Update KPI Cards in real time
+function updateKPICards(metrics, engines) {
+  const mIntel = engines && engines.maritime ? engines.maritime : null;
+  const eState = engines && engines.energy && engines.energy.state ? engines.energy.state : null;
+  const rState = engines && engines.supply_chain && engines.supply_chain.state ? engines.supply_chain.state : null;
+  const wcState = engines && engines.working_capital && engines.working_capital.state ? engines.working_capital.state : null;
+
+  // KPI 1: ASEAN Flow
+  const kpi1Val = document.getElementById("kpi-1-val");
+  const kpi1Sub = document.getElementById("kpi-1-sub");
+  if (mIntel && kpi1Val && kpi1Sub) {
+    const chk = mIntel.asean_chokepoints || {};
+    const transits = (chk.malacca_strait_vessels || 18) + (chk.singapore_strait_vessels || 24);
+    kpi1Val.textContent = `${transits} Transits/Day`;
+    kpi1Sub.innerHTML = `Active Cargo: <span class="up">${mIntel.total_cargo_in_transit_mbbls}M bbls</span> | Malacca: ${chk.malacca_strait_vessels || 18} | SG: ${chk.singapore_strait_vessels || 24}`;
+  }
+
+  // KPI 2: Energy Crack Spread
+  const kpi2Val = document.getElementById("kpi-2-val");
+  const kpi2Sub = document.getElementById("kpi-2-sub");
+  if (eState && kpi2Val && kpi2Sub) {
+    kpi2Val.textContent = `+$${eState.singapore_gasoil_crack_usd}/bbl`;
+    kpi2Sub.innerHTML = `Tapis Sweet: <span class="warn">$${eState.tapis_asean_usd}</span> | JKM LNG: $${eState.jkm_spot_lng_usd}`;
+  }
+
+  // KPI 3: Supply Chain Risk
+  const kpi3Val = document.getElementById("kpi-3-val");
+  const kpi3Sub = document.getElementById("kpi-3-sub");
+  if (rState && kpi3Val && kpi3Sub) {
+    kpi3Val.textContent = `${rState.malacca_bottleneck_risk_score} / 100`;
+    kpi3Sub.innerHTML = `Cape Diversion: <span class="alert">+${rState.cape_diversion_delay_days} Days</span> | SG Dwell: ${rState.singapore_container_dwell_days}d`;
+  }
+
+  // KPI 4: Working Capital Lockup
+  const kpi4Val = document.getElementById("kpi-4-val");
+  const kpi4Sub = document.getElementById("kpi-4-sub");
+  if (wcState && kpi4Val && kpi4Sub) {
+    kpi4Val.textContent = `$${wcState.transit_inventory_cash_lockup_usd_millions.toLocaleString()} Million`;
+    kpi4Sub.innerHTML = `CCC Expansion: <span class="alert">+${wcState.cash_conversion_cycle_expansion_days} Days</span> | SCF Gap: $${(wcState.scf_liquidity_gap_usd_millions / 1e3).toFixed(1)}B`;
+  }
+}
+
+// Update Chain of Intelligence Cascade Steps in real time
+function updateChainCascade(cascade) {
+  if (!cascade || !cascade.steps) return;
+
+  cascade.steps.forEach(step => {
+    const num = step.step_number;
+    const headEl = document.getElementById(`step-${num}-head`);
+    const descEl = document.getElementById(`step-${num}-desc`);
+
+    if (headEl && step.headline) headEl.textContent = step.headline;
+    if (descEl && step.data_summary) descEl.textContent = step.data_summary;
+  });
+}
+
+// Load Geofences
 function loadGeofences() {
   fetch(apiUrl("/api/geofences"))
     .then(r => r.json())
@@ -440,13 +557,24 @@ function loadGeofences() {
         polygon.bindTooltip(`<b>${g.name}</b><br/>${g.description}`, { className: "density-tooltip" });
         geofenceLayers.push(polygon);
       });
-    });
+    })
+    .catch(err => console.warn("Could not load geofences", err));
 }
 
-// Map Vessels Update
+// Load Initial Snapshot
+function loadInitialTelemetry() {
+  fetch(apiUrl("/api/vessels"))
+    .then(r => r.json())
+    .then(data => {
+      handleRealtimeTelemetry(data);
+    })
+    .catch(err => console.warn("Failed loading live metrics", err));
+}
+
+// Map Vessels Update with Real-Time Trails
 function updateVesselsOnMap(vessels) {
   const countLabel = document.getElementById("vessel-count-label");
-  if (countLabel) countLabel.textContent = `Tracking ${vessels.length} Vessels`;
+  if (countLabel) countLabel.textContent = `Tracking ${vessels.length} Vessels (Live AIS)`;
 
   vessels.forEach(v => {
     const lat = v.latitude;
@@ -458,6 +586,24 @@ function updateVesselsOnMap(vessels) {
     if (v.vessel_type === "Container Ship") markerColor = "#3B82F6";
     if (v.vessel_type === "Bulk Carrier") markerColor = "#F59E0B";
     if (!v.is_transponder_on || v.status === "Dark / AIS Disabled") markerColor = "#EF4444";
+
+    // Track trail history (last 5 positions)
+    if (!vesselTrailHistory[key]) vesselTrailHistory[key] = [];
+    vesselTrailHistory[key].push([lat, lon]);
+    if (vesselTrailHistory[key].length > 5) vesselTrailHistory[key].shift();
+
+    // Render trail if enabled
+    if (showTrails && vesselTrailHistory[key].length > 1) {
+      if (vesselTrailPolylines[key]) {
+        vesselTrailPolylines[key].setLatLngs(vesselTrailHistory[key]);
+      } else {
+        vesselTrailPolylines[key] = L.polyline(vesselTrailHistory[key], {
+          color: markerColor,
+          weight: 2,
+          opacity: 0.6,
+        }).addTo(map);
+      }
+    }
 
     const svgIcon = L.divIcon({
       className: "vessel-div-icon",
@@ -475,7 +621,8 @@ function updateVesselsOnMap(vessels) {
           <b>${v.vessel_name}</b> (${v.vessel_type})<br/>
           Destination: ${v.destination}<br/>
           Speed: ${v.speed_knots} knots<br/>
-          Cargo: ${(v.dwt_tonnes * 7.33 / 1e3).toFixed(0)}k bbls eq.
+          Cargo: ${(v.dwt_tonnes * 7.33 / 1e3).toFixed(0)}k bbls eq.<br/>
+          Status: <b>${v.status}</b>
         </div>
       `);
       vesselMarkers[key] = marker;
@@ -483,7 +630,7 @@ function updateVesselsOnMap(vessels) {
   });
 }
 
-// Update Tables
+// Update Vessels Table
 function updateTables(data) {
   const tbody = document.getElementById("vessels-table-body");
   if (!tbody || !data.vessels) return;
@@ -503,10 +650,10 @@ function updateTables(data) {
   });
 }
 
-// WebSocket Connection
+// WebSocket Real-Time Connection
 function initWebSocket() {
   const wsUrl = getWsUrl();
-  console.log("Connecting WebSocket:", wsUrl);
+  console.log("Connecting Real-Time Telemetry WebSocket:", wsUrl);
 
   try {
     wsClient = new WebSocket(wsUrl);
@@ -514,7 +661,7 @@ function initWebSocket() {
     wsClient.onopen = () => {
       const badgeText = document.getElementById("ws-status-text");
       const pulseDot = document.getElementById("ws-pulse-dot");
-      if (badgeText) badgeText.textContent = "TELEMETRY LIVE";
+      if (badgeText) badgeText.textContent = "TELEMETRY LIVE (WS)";
       if (pulseDot) pulseDot.style.backgroundColor = "#10B981";
     };
 
@@ -522,10 +669,7 @@ function initWebSocket() {
       try {
         const msg = JSON.parse(evt.data);
         if (msg.type === "TELEMETRY_TICK" || msg.type === "TELEMETRY_SNAPSHOT") {
-          if (msg.data && msg.data.vessels) {
-            updateVesselsOnMap(msg.data.vessels);
-            updateTables(msg.data);
-          }
+          handleRealtimeTelemetry(msg.data);
         }
       } catch (e) {
         console.error("Error parsing WS telemetry packet", e);
@@ -533,11 +677,47 @@ function initWebSocket() {
     };
 
     wsClient.onclose = () => {
-      setTimeout(initWebSocket, 5000);
+      const badgeText = document.getElementById("ws-status-text");
+      const pulseDot = document.getElementById("ws-pulse-dot");
+      if (badgeText) badgeText.textContent = "TELEMETRY LIVE (POLL)";
+      if (pulseDot) pulseDot.style.backgroundColor = "#F59E0B";
+      setTimeout(initWebSocket, 4000);
+    };
+
+    wsClient.onerror = () => {
+      if (wsClient) wsClient.close();
     };
   } catch (e) {
-    console.warn("WebSocket init failed, fallback to polling", e);
+    console.warn("WebSocket init failed, using HTTP polling", e);
   }
+}
+
+// Fallback Polling Loop ensuring 100% continuous real-time feeds even without WebSockets
+function initPollingFallback() {
+  setInterval(() => {
+    if (!wsClient || wsClient.readyState !== WebSocket.OPEN) {
+      fetch(apiUrl("/api/vessels"))
+        .then(r => r.json())
+        .then(data => {
+          handleRealtimeTelemetry(data);
+          const badgeText = document.getElementById("ws-status-text");
+          if (badgeText) badgeText.textContent = "TELEMETRY LIVE (HTTP)";
+        })
+        .catch(() => {});
+    }
+  }, 3000);
+}
+
+// Real-Time Clock on UI & Modal
+function startRealtimeClock() {
+  const updateClock = () => {
+    const now = new Date();
+    const utcStr = now.toUTCString().replace("GMT", "UTC");
+    const modalClock = document.getElementById("modal-realtime-timestamp");
+    if (modalClock) modalClock.textContent = utcStr;
+  };
+  updateClock();
+  setInterval(updateClock, 1000);
 }
 
 // AI Status Check & Report Modal
@@ -552,9 +732,9 @@ function checkAIStatus() {
           badge.style.background = "rgba(16, 185, 129, 0.2)";
           badge.style.color = "#6EE7B7";
         } else {
-          badge.textContent = "KEY REQUIRED";
-          badge.style.background = "rgba(245, 158, 11, 0.2)";
-          badge.style.color = "#FDE68A";
+          badge.textContent = "QUANT CASCADE ACTIVE";
+          badge.style.background = "rgba(59, 130, 246, 0.2)";
+          badge.style.color = "#93C5FD";
         }
       }
     }).catch(() => {});
@@ -566,18 +746,28 @@ function initReportModal() {
   const closeBtn = document.getElementById("btn-close-modal");
   const cancelBtn = document.getElementById("btn-cancel-modal");
   const generateBtn = document.getElementById("btn-execute-generate");
+  const directDownloadBtn = document.getElementById("btn-download-direct");
 
-  if (openBtn) openBtn.addEventListener("click", () => modal.classList.add("show"));
+  document.querySelectorAll("[data-open-report], #btn-open-report-modal, #btn-open-report-modal-2").forEach(btn => {
+    btn.addEventListener("click", () => modal.classList.add("show"));
+  });
   if (closeBtn) closeBtn.addEventListener("click", () => modal.classList.remove("show"));
   if (cancelBtn) cancelBtn.addEventListener("click", () => modal.classList.remove("show"));
+
+  if (directDownloadBtn) {
+    directDownloadBtn.addEventListener("click", () => {
+      window.open(apiUrl("/api/download-report"), "_blank");
+    });
+  }
 
   if (generateBtn) {
     generateBtn.addEventListener("click", () => {
       const model = document.getElementById("modal-model-select").value;
       const key = document.getElementById("modal-gemini-key").value;
       const progress = document.getElementById("generation-progress");
+      const previewPanel = document.getElementById("report-preview-panel");
 
-      progress.style.display = "block";
+      if (progress) progress.style.display = "block";
       generateBtn.disabled = true;
 
       fetch(apiUrl("/api/generate-report"), {
@@ -591,15 +781,30 @@ function initReportModal() {
       })
       .then(r => r.json())
       .then(res => {
-        progress.style.display = "none";
+        if (progress) progress.style.display = "none";
         generateBtn.disabled = false;
-        modal.classList.remove("show");
+
+        // Render plain colours preview right in modal
+        if (res.summary && previewPanel) {
+          previewPanel.style.display = "block";
+          const titleEl = document.getElementById("preview-report-title");
+          const subEl = document.getElementById("preview-report-subtitle");
+          const bodyEl = document.getElementById("preview-report-body");
+
+          if (titleEl) titleEl.textContent = res.summary.title || "ASEAN TRADE & ENERGY INTELLIGENCE";
+          if (subEl) subEl.textContent = `Generated Real-Time: ${res.as_of_date || new Date().toUTCString()}`;
+          if (bodyEl && res.summary.executive_summary_paragraphs) {
+            bodyEl.innerHTML = res.summary.executive_summary_paragraphs.map(p => `<p style="margin-bottom: 8px;">${p}</p>`).join("");
+          }
+        }
+
+        // Open download in background tab
         window.open(apiUrl("/api/download-report"), "_blank");
       })
       .catch(err => {
-        progress.style.display = "none";
+        if (progress) progress.style.display = "none";
         generateBtn.disabled = false;
-        alert("Report generation failed: " + err.message);
+        alert("Report generation error: " + err.message);
       });
     });
   }

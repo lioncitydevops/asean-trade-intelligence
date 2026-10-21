@@ -1,6 +1,7 @@
 import os
 import logging
 from typing import Dict, Any, Optional
+from datetime import datetime, timezone
 from ..core.models import MacroInsightsSummary
 from ..analytics.traffic_engine import traffic_engine
 from ..analytics.dark_fleet_detector import dark_fleet_detector
@@ -24,7 +25,7 @@ class MacroNarrativeGenerator:
 
     def generate_report_content(
         self,
-        as_of_date: str = "2026-09-16",
+        as_of_date: Optional[str] = None,
         gemini_api_key: Optional[str] = None,
         model_name: str = "gemini-2.5-flash",
         force_ai: bool = False
@@ -33,6 +34,9 @@ class MacroNarrativeGenerator:
         Synthesizes live telemetry, ASEAN trade flow, energy crack spreads, carbon emissions,
         working capital drag, and macro nowcasting into an institutional intelligence briefing.
         """
+        if as_of_date is None or as_of_date == "2026-09-16":
+            as_of_date = datetime.now(timezone.utc).strftime("%B %d, %Y")
+
         metrics = traffic_engine.get_current_metrics()
         market = get_market_intelligence(as_of_date)
         positions = stream_engine.step_simulation(delta_minutes=0.0)
@@ -68,7 +72,7 @@ class MacroNarrativeGenerator:
         d = metrics["asian_demand_indices"]
 
         title = "ASEAN TRADE, ENERGY & SUPPLY CHAIN INTELLIGENCE BRIEFING"
-        subtitle = "INSTITUTIONAL BRIEFING 2026 | MACRO NOWCASTING & MULTI-ENGINE CHAIN OF INTELLIGENCE"
+        subtitle = f"REAL-TIME NOWCASTING & MULTI-ENGINE CHAIN OF INTELLIGENCE | GENERATED: {as_of_date.upper()}"
 
         exec_summary = [
             f"Physical trade movements across ASEAN chokepoints signal a widening divergence between energy input costs and supply chain liquidity. "

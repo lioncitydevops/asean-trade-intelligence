@@ -8,13 +8,20 @@ import pandas as pd
 from typing import Dict, List, Tuple
 
 
-def generate_time_series_data(as_of_date: str = "2026-09-15") -> Dict[str, pd.DataFrame]:
+def generate_time_series_data(as_of_date: str = None) -> Dict[str, pd.DataFrame]:
     """
     Generates realistic daily historical data from 2026-01-01 through as_of_date,
     along with 5-year historical baselines (2020-2025 Min, Max, Avg) and Asian demand indices.
     """
-    end_dt = datetime.strptime(as_of_date, "%Y-%m-%d")
+    if as_of_date is None:
+        as_of_date = datetime.now().strftime("%Y-%m-%d")
+    try:
+        end_dt = datetime.strptime(as_of_date, "%Y-%m-%d")
+    except Exception:
+        end_dt = datetime.now()
     start_dt = datetime(2026, 1, 1)
+    if end_dt < start_dt:
+        end_dt = datetime(2026, 10, 21)
     date_range = pd.date_range(start=start_dt, end=end_dt, freq="D")
     n_days = len(date_range)
     day_indices = np.arange(n_days)

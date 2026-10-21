@@ -3,6 +3,7 @@ Traffic analysis engine computing chokepoint volume, moving averages, and flow c
 """
 
 from typing import List, Dict, Any, Optional
+from datetime import datetime
 import pandas as pd
 import numpy as np
 from ..core.models import AISPosition, ChokepointTransit, DailyChokepointMetric, NavigationStatus
@@ -87,7 +88,7 @@ class TrafficAnalyticsEngine:
             sk_index = round(float(latest_d["skorea_index"]), 1)
 
             return {
-                "as_of_date": latest_f["date_str"],
+                "as_of_date": datetime.now().strftime("%Y-%m-%d"),
                 "hormuz": {
                     "active_vessels_counted": h_active_count,
                     "active_capacity_mbbls": h_capacity_mbbls,
@@ -127,7 +128,7 @@ class TrafficAnalyticsEngine:
             }
 
         return {
-            "as_of_date": latest_f["date_str"],
+            "as_of_date": datetime.now().strftime("%Y-%m-%d"),
             "hormuz": {
                 "active_vessels_counted": int(latest_h["active_vessels"]),
                 "active_capacity_mbbls": round(latest_h["active_vessels"] * 1.0, 1),

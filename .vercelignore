@@ -1,0 +1,12 @@
+.git
+.pytest_cache
+*.pdf
+output/
+production_artifacts/
+deploy/
+Dockerfile
+render.yaml
+.agents/
+app_build/
+__pycache__/
+*.pyc

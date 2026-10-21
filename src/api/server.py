@@ -113,6 +113,13 @@ async def telemetry_broadcast_loop():
                 dark_events = dark_fleet_detector.detect_dark_transponders(positions)
                 metrics = traffic_engine.get_current_metrics(positions=positions)
                 market = get_market_intelligence()
+                maritime_flow = maritime_engine.analyze_maritime_flow(positions)
+                energy_intel = energy_engine.get_summary()
+                supply_chain_intel = supply_chain_engine.get_summary()
+                macro_nowcast = macro_nowcast_engine.get_summary()
+                carbon_intel = carbon_engine.get_summary(positions)
+                working_capital_intel = working_capital_engine.get_summary()
+                cascade = chain_of_intelligence.synthesize_cascade(positions)
 
                 payload = {
                     "type": "TELEMETRY_TICK",
@@ -123,7 +130,16 @@ async def telemetry_broadcast_loop():
                         "active_sts_clusters": [serialize_model(c) for c in sts_clusters],
                         "dark_fleet_events": dark_events,
                         "metrics": metrics,
-                        "market": market
+                        "market": market,
+                        "engines": {
+                            "maritime": maritime_flow,
+                            "energy": energy_intel,
+                            "supply_chain": supply_chain_intel,
+                            "macro_nowcast": macro_nowcast,
+                            "carbon": carbon_intel,
+                            "working_capital": working_capital_intel,
+                        },
+                        "chain_cascade": serialize_model(cascade)
                     }
                 }
                 await manager.broadcast_json(payload)
@@ -379,7 +395,7 @@ async def get_exhibits_data():
 
 
 class ReportGenerationRequest(BaseModel):
-    as_of_date: Optional[str] = "2026-09-16"
+    as_of_date: Optional[str] = None
     gemini_api_key: Optional[str] = None
     model_name: Optional[str] = "gemini-2.5-flash"
     force_ai: Optional[bool] = False
@@ -396,33 +412,37 @@ def get_pdf_output_path() -> str:
 @app.post("/generate-report")
 async def trigger_report_generation(req: Optional[ReportGenerationRequest] = None):
     """
-    Synthesizes live telemetry and generates the institutional PDF report using Gemini AI.
+    Synthesizes live real-time telemetry and generates the institutional PDF report in plain colours.
     """
     if req is None:
         req = ReportGenerationRequest()
 
+    now_utc = datetime.now(timezone.utc)
+    report_date = req.as_of_date if (req.as_of_date and req.as_of_date != "2026-09-16") else now_utc.strftime("%B %d, %Y")
+
     output_pdf = get_pdf_output_path()
 
-    # 1. Synthesize narrative using Gemini if key available
+    # 1. Synthesize narrative using Gemini if key available or fallback
     summary = narrative_generator.generate_report_content(
-        as_of_date=req.as_of_date or "2026-09-16",
+        as_of_date=report_date,
         gemini_api_key=req.gemini_api_key,
         model_name=req.model_name or "gemini-2.5-flash",
         force_ai=req.force_ai or False
     )
 
-    # 2. Compile PDF
+    # 2. Compile PDF in plain colours
     pdf_path = build_macro_newsletter_pdf(
         output_pdf_path=output_pdf,
-        as_of_date=req.as_of_date or "2026-09-16",
+        as_of_date=report_date,
         summary=summary
     )
 
     return {
         "status": "success",
-        "message": "Real-time AI report generated successfully.",
+        "message": f"Real-time institutional briefing generated successfully ({report_date}).",
         "pdf_path": pdf_path,
         "summary": serialize_model(summary),
+        "as_of_date": report_date,
         "generated_at": datetime.now(timezone.utc).isoformat(),
     }
 
@@ -430,10 +450,11 @@ async def trigger_report_generation(req: Optional[ReportGenerationRequest] = Non
 @app.get("/api/download-report")
 @app.get("/download-report")
 async def download_report():
-    """Serves the latest compiled PDF newsletter."""
+    """Serves the latest compiled real-time PDF newsletter in plain colours."""
     pdf_path = get_pdf_output_path()
     if not os.path.exists(pdf_path):
-        build_macro_newsletter_pdf(output_pdf_path=pdf_path)
+        now_utc = datetime.now(timezone.utc)
+        build_macro_newsletter_pdf(output_pdf_path=pdf_path, as_of_date=now_utc.strftime("%B %d, %Y"))
 
     return FileResponse(
         pdf_path,

@@ -10,6 +10,7 @@ import logging
 import urllib.request
 import urllib.error
 from typing import Dict, Any, Optional, List
+from datetime import datetime, timezone
 from ..core.models import MacroInsightsSummary
 
 logger = logging.getLogger(__name__)
@@ -20,12 +21,14 @@ def generate_gemini_macro_report(
     market: Dict[str, Any],
     api_key: Optional[str] = None,
     model_name: str = "gemini-2.5-flash",
-    as_of_date: str = "2026-09-16"
+    as_of_date: Optional[str] = None
 ) -> MacroInsightsSummary:
     """
     Sends real-time telemetry metrics to Google Gemini 2.5 / 3.0 Flash/Pro to perform
     macroeconomic nowcasting and produce an institutional research newsletter.
     """
+    if as_of_date is None or as_of_date == "2026-09-16":
+        as_of_date = datetime.now(timezone.utc).strftime("%B %d, %Y")
     key = api_key or os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
     if not key:
         raise ValueError(

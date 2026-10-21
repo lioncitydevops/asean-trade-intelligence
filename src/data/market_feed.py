@@ -80,9 +80,9 @@ class LiveMarketFeed:
 _market_feed = LiveMarketFeed()
 
 
-def get_market_intelligence(as_of_date: str = "2026-09-16") -> Dict[str, Any]:
+def get_market_intelligence(as_of_date: str = None) -> Dict[str, Any]:
     """Returns dynamic real-time market prices, forward curve inversion data, and supply disruption states."""
     data = _market_feed.tick()
-    if as_of_date:
+    if as_of_date and as_of_date != "2026-09-16":
         data["as_of_date"] = as_of_date
     return data

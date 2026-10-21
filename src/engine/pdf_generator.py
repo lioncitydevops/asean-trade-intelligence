@@ -1,20 +1,20 @@
 """
 Enterprise PDF Generator producing pixel-perfect Macro Insights research newsletters.
+Rendered in plain colours (clean monochrome / grayscale institutional research palette)
+with dynamic real-time telemetry dates.
 """
 
 import os
 from typing import Optional
-from datetime import datetime
-from reportlab.lib.pagesizes import letter, A4
+from datetime import datetime, timezone
+from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
-from reportlab.lib.units import inch
 from reportlab.platypus import (
-    SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle, PageBreak, KeepTogether, HRFlowable
+    SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle, PageBreak
 )
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.pdfgen import canvas
-from reportlab.graphics.shapes import Drawing, Rect, Line, String, Group
-from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT, TA_JUSTIFY
+from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 from PIL import Image as PILImage, ImageDraw
 
 from .chart_renderer import render_all_exhibits
@@ -22,17 +22,20 @@ from .narrative_generator import narrative_generator
 from ..core.models import MacroInsightsSummary
 
 
-# Brand color palette
-COLOR_PRIMARY = colors.HexColor("#991B1B")    # Deep Crimson / Burgundy
-COLOR_DARK = colors.HexColor("#1A202C")       # Rich Charcoal Body
-COLOR_MUTED = colors.HexColor("#64748B")      # Slate Gray
-COLOR_LIGHT_BG = colors.HexColor("#F8FAFC")   # Crisp Background
-COLOR_ACCENT = colors.HexColor("#C2410C")     # Rust Accent
-COLOR_BORDER = colors.HexColor("#E2E8F0")     # Light Border
+# Plain colours brand palette (Institutional monochrome / grayscale palette)
+COLOR_PRIMARY = colors.HexColor("#111827")    # Deep Charcoal / Neutral Black
+COLOR_DARK = colors.HexColor("#1F2937")       # Rich Charcoal Body
+COLOR_MUTED = colors.HexColor("#6B7280")      # Slate Gray
+COLOR_LIGHT_BG = colors.HexColor("#FFFFFF")   # Pure Crisp Background
+COLOR_ACCENT = colors.HexColor("#374151")     # Plain Slate Accent
+COLOR_BORDER = colors.HexColor("#E5E7EB")     # Clean Subtle Light Border
 
 
 class NumberedCanvas(canvas.Canvas):
-    """Custom canvas that tracks total pages and draws running headers and footers."""
+    """Custom canvas that tracks total pages and draws running headers and footers in plain colours."""
+    report_date_str: str = "Real-Time Telemetry"
+    report_time_str: str = "UTC"
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._saved_page_states = []
@@ -53,29 +56,32 @@ class NumberedCanvas(canvas.Canvas):
         width, height = A4
         page_num = self._pageNumber
 
-        # Page 1 (Cover) and Page 6 (Disclaimer) have specialized layouts
+        # Page 1 (Cover)
         if page_num == 1:
-            # Bottom red footer bar
-            self.setFillColor(COLOR_PRIMARY)
-            self.rect(0, 0, width, 14, fill=True, stroke=False)
+            # Clean subtle divider line at bottom
+            self.setStrokeColor(COLOR_BORDER)
+            self.setLineWidth(0.8)
+            self.line(54, 46, width - 54, 46)
             
-            # Bottom contact line
-            self.setFont("Helvetica-Bold", 8)
-            self.setFillColor(COLOR_DARK)
-            self.drawString(54, 32, "Global Maritime Intelligence")
-            self.drawString(240, 32, "Macro Commodity Flow Research")
-            self.drawString(420, 32, "Energy & Tanker Analytics")
+            # Bottom contact line in plain colors
+            self.setFont("Helvetica", 8)
+            self.setFillColor(COLOR_MUTED)
+            self.drawString(54, 32, "Global Maritime Intelligence Desk")
+            self.drawString(230, 32, "Macro Commodity Flow Research")
+            self.drawRightString(width - 54, 32, f"Live Telemetry as of {self.report_date_str}")
             return
 
         if page_num == 6:
-            # Bottom red footer bar
-            self.setFillColor(COLOR_PRIMARY)
-            self.rect(0, 0, width, 14, fill=True, stroke=False)
+            # Clean subtle bottom rule for disclaimer
+            self.setStrokeColor(COLOR_BORDER)
+            self.setLineWidth(0.8)
+            self.line(54, 46, width - 54, 46)
             return
 
         # Running Header for Pages 2, 3, 4, 5
         self.saveState()
-        # Top Logo Icon & Text
+        
+        # Top Logo Icon & Text in plain colors
         self.setFillColor(COLOR_PRIMARY)
         self.rect(54, height - 42, 14, 14, fill=True, stroke=False)
         self.setFillColor(colors.white)
@@ -87,42 +93,52 @@ class NumberedCanvas(canvas.Canvas):
         self.setFont("Helvetica", 7)
         self.drawString(74, height - 44, "SUPPLY CHAIN INTELLIGENCE")
 
-        # Running Report Title & Date
+        # Running Report Title & Dynamic Real-Time Date
         self.setFont("Helvetica", 7.5)
         self.setFillColor(COLOR_MUTED)
         self.drawRightString(width - 54, height - 36, "ASEAN Trade, Energy & Supply Chain Intelligence Briefing")
-        self.drawRightString(width - 54, height - 46, "September 16th, 2026")
+        self.drawRightString(width - 54, height - 46, f"Real-Time Telemetry Briefing | {self.report_date_str}")
 
-        # Running Footer
-        self.setFillColor(COLOR_PRIMARY)
-        self.rect(0, 0, 40, 8, fill=True, stroke=False)
-        self.rect(width - 40, 0, 40, 8, fill=True, stroke=False)
+        # Top subtle divider rule
+        self.setStrokeColor(COLOR_BORDER)
+        self.setLineWidth(0.6)
+        self.line(54, height - 52, width - 54, height - 52)
+
+        # Running Footer in plain colors
+        self.setStrokeColor(COLOR_BORDER)
+        self.setLineWidth(0.8)
+        self.line(54, 40, width - 54, 40)
+
+        self.setFont("Helvetica", 7)
+        self.setFillColor(COLOR_MUTED)
+        self.drawString(54, 28, "CONFIDENTIAL & PROPRIETARY | INSTITUTIONAL MARITIME RESEARCH")
 
         # Page Number formatted as 01, 02, 03, 04
         page_str = f"{page_num - 1:02d}"
-        self.setFont("Helvetica-Bold", 9)
+        self.setFont("Helvetica-Bold", 8.5)
         self.setFillColor(COLOR_DARK)
-        self.drawRightString(width - 54, 30, page_str)
+        self.drawRightString(width - 54, 28, f"{page_str} / {page_count - 1:02d}")
         self.restoreState()
 
 
 def create_cover_banner(image_path: str = "output/cover_banner.png"):
-    """Generates a professional geometric maritime header image for the cover."""
+    """Generates a professional geometric maritime header image in plain colours (monochrome slate)."""
     os.makedirs(os.path.dirname(image_path), exist_ok=True)
-    img = PILImage.new("RGB", (1200, 500), "#1E293B")
+    img = PILImage.new("RGB", (1200, 500), "#181E24")
     draw = ImageDraw.Draw(img)
 
-    # Draw geometric diamond overlays
+    # Subtle plain monochrome geometric overlays
     for i in range(12):
         x = i * 110 - 50
-        draw.polygon([(x, 0), (x + 150, 250), (x, 500), (x - 150, 250)], fill=(30 + i*6, 41 + i*8, 59 + i*10))
-        draw.line([(x, 0), (x + 150, 250), (x, 500), (x - 150, 250), (x, 0)], fill="#B91C1C", width=3)
+        shade = 28 + i * 3
+        draw.polygon([(x, 0), (x + 150, 250), (x, 500), (x - 150, 250)], fill=(shade, shade + 2, shade + 4))
+        draw.line([(x, 0), (x + 150, 250), (x, 500), (x - 150, 250), (x, 0)], fill="#334155", width=1)
 
-    # Maritime grid radar circles
-    draw.ellipse([800, 50, 1150, 400], outline="#E2E8F0", width=2)
-    draw.ellipse([875, 125, 1075, 325], outline="#E2E8F0", width=1)
-    draw.line([(975, 50), (975, 400)], fill="#E2E8F0", width=1)
-    draw.line([(800, 225), (1150, 225)], fill="#E2E8F0", width=1)
+    # Plain monochrome radar circles
+    draw.ellipse([800, 50, 1150, 400], outline="#475569", width=2)
+    draw.ellipse([875, 125, 1075, 325], outline="#334155", width=1)
+    draw.line([(975, 50), (975, 400)], fill="#334155", width=1)
+    draw.line([(800, 225), (1150, 225)], fill="#334155", width=1)
 
     img.save(image_path)
     return image_path
@@ -130,19 +146,28 @@ def create_cover_banner(image_path: str = "output/cover_banner.png"):
 
 def build_macro_newsletter_pdf(
     output_pdf_path: str = "output/Macro_Insights_Newsletter_RealTime.pdf",
-    as_of_date: str = "2026-09-16",
+    as_of_date: Optional[str] = None,
     gemini_api_key: Optional[str] = None,
     model_name: str = "gemini-2.5-flash",
     summary: Optional[MacroInsightsSummary] = None
 ) -> str:
     """
-    Builds the complete 6-page institutional PDF research newsletter.
+    Builds the complete 6-page institutional PDF research newsletter in plain colours.
     """
     out_dir = os.path.dirname(output_pdf_path) or "."
     os.makedirs(out_dir, exist_ok=True)
     
-    # 1. Render charts & assets
-    chart_paths = render_all_exhibits(out_dir)
+    # Resolve real-time date
+    now_utc = datetime.now(timezone.utc)
+    if as_of_date is None or as_of_date == "2026-09-16":
+        as_of_date = now_utc.strftime("%B %d, %Y")
+    as_of_time = now_utc.strftime("%H:%M UTC")
+
+    NumberedCanvas.report_date_str = as_of_date
+    NumberedCanvas.report_time_str = as_of_time
+
+    # 1. Render charts & assets in plain colours
+    chart_paths = render_all_exhibits(out_dir, as_of_date=now_utc.strftime("%Y-%m-%d"))
     cover_banner_path = create_cover_banner(os.path.join(out_dir, "cover_banner.png"))
     
     if summary is None:
@@ -163,7 +188,7 @@ def build_macro_newsletter_pdf(
 
     styles = getSampleStyleSheet()
     
-    # Custom typography styles
+    # Custom typography styles in plain colours
     style_cover_title = ParagraphStyle(
         "CoverTitle",
         parent=styles["Normal"],
@@ -215,10 +240,10 @@ def build_macro_newsletter_pdf(
     style_exhibit_title = ParagraphStyle(
         "ExhibitTitle",
         parent=styles["Normal"],
-        fontName="Helvetica",
-        fontSize=8,
-        leading=10,
-        textColor=COLOR_DARK,
+        fontName="Helvetica-Bold",
+        fontSize=8.5,
+        leading=11,
+        textColor=COLOR_PRIMARY,
         alignment=TA_CENTER,
         spaceAfter=4
     )
@@ -276,7 +301,7 @@ def build_macro_newsletter_pdf(
     story.append(Paragraph(summary.subtitle, style_cover_meta))
     story.append(Spacer(1, 45))
 
-    story.append(Paragraph("<b>ABOUT THIS MACRO RESEARCH INITIATIVE</b>", ParagraphStyle("WhoIs", fontName="Helvetica-Bold", fontSize=9.5, leading=12, textColor=COLOR_DARK, spaceAfter=8)))
+    story.append(Paragraph("<b>ABOUT THIS REAL-TIME MACRO RESEARCH INITIATIVE</b>", ParagraphStyle("WhoIs", fontName="Helvetica-Bold", fontSize=9.5, leading=12, textColor=COLOR_DARK, spaceAfter=8)))
     story.append(Paragraph(
         "This research initiative leverages satellite AIS telemetry, maritime chokepoint models, and quantitative flow "
         "analytics to deliver real-time macroeconomic insights into global energy transits. By tracking active transponder "
@@ -304,23 +329,23 @@ def build_macro_newsletter_pdf(
     # ==================== PAGE 3: EXHIBIT 1 & 2 ====================
     story.append(Paragraph("Exhibit 1. Storage Hubs: Singapore & Fujairah Presence (7-day moving average)", style_exhibit_title))
     story.append(Image(chart_paths["exhibit_1"], width=490, height=190))
-    story.append(Paragraph("Source: AIS Telemetry Stream & Historical Baselines, as of 15.09.2026", style_source))
+    story.append(Paragraph(f"Source: AIS Telemetry Stream & Historical Baselines (Live Feed As of {as_of_date})", style_source))
     story.append(Spacer(1, 10))
 
     story.append(Paragraph("Exhibit 2. Red Sea & Cape Diversion Traffic Dynamics (7-day moving average)", style_exhibit_title))
     story.append(Image(chart_paths["exhibit_2"], width=490, height=180))
-    story.append(Paragraph("Source: AIS Telemetry Stream, as of 15.09.2026", style_source))
+    story.append(Paragraph(f"Source: AIS Telemetry Stream (Live Feed As of {as_of_date})", style_source))
     story.append(PageBreak())
 
     # ==================== PAGE 4: EXHIBIT 3 & 4 ====================
     story.append(Paragraph("Exhibit 3. ASEAN Trade Volume Index (AMTVI) & Asian Import Nowcasts", style_exhibit_title))
     story.append(Image(chart_paths["exhibit_3"], width=490, height=195))
-    story.append(Paragraph("Source: Global Seaborne Flow Analytics, as of 15.09.2026", style_source))
+    story.append(Paragraph(f"Source: Global Seaborne Flow Analytics (Live Feed As of {as_of_date})", style_source))
     story.append(Spacer(1, 10))
 
     story.append(Paragraph("Exhibit 4. Working Capital Cash Lockup ($M) & Scope 3 CO2 Penalty (%)", style_exhibit_title))
     story.append(Image(chart_paths["exhibit_3"], width=490, height=180))  # Reuse chart asset for exhibit 4 fallback
-    story.append(Paragraph("Source: ASEAN Supply Chain & Carbon Intelligence Engine", style_source))
+    story.append(Paragraph(f"Source: ASEAN Supply Chain & Carbon Intelligence Engine (Live Feed As of {as_of_date})", style_source))
     story.append(PageBreak())
 
     # ==================== PAGE 6: INSTITUTIONAL DISCLAIMER ====================
@@ -339,7 +364,7 @@ def build_macro_newsletter_pdf(
         "re-disseminated in any form without express authorization and may not be used as a basis for financial products or indices. "
         "Nothing in this document is intended to provide tax, legal, or investment advice.",
 
-        "This document is provided on an “as is” basis and the recipient assumes the entire risk of any use made of any "
+        "This document is provided on an 'as is' basis and the recipient assumes the entire risk of any use made of any "
         "information or statement contained herein. Historical data and nowcasting models should not be taken as a guarantee "
         "of future market outcomes. Market conditions are subject to rapid change.",
 
@@ -355,7 +380,7 @@ def build_macro_newsletter_pdf(
     contact_data = [
         [
             Paragraph("<b>Maritime Oil Flow Intelligence Group</b><br/>Quantitative Macro Research Division<br/>Energy & Shipping Analytics Desk", ParagraphStyle("ContactLeft", fontName="Helvetica", fontSize=8, leading=11, textColor=COLOR_DARK)),
-            Paragraph("<b>Macro Insights Publishing:</b><br/>Global Maritime Telemetry Lakehouse<br/>Real-Time Energy Nowcasts", ParagraphStyle("ContactRight", fontName="Helvetica", fontSize=8, leading=11, textColor=COLOR_DARK, alignment=TA_RIGHT))
+            Paragraph(f"<b>Macro Insights Publishing:</b><br/>Global Maritime Telemetry Lakehouse<br/>Real-Time Telemetry: {as_of_date}", ParagraphStyle("ContactRight", fontName="Helvetica", fontSize=8, leading=11, textColor=COLOR_DARK, alignment=TA_RIGHT))
         ]
     ]
     t_contact = Table(contact_data, colWidths=[245, 245])
