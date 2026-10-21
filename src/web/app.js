@@ -78,6 +78,8 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 let mapTileLayer = null;
+let baseLayers = {};
+let layerControl = null;
 
 // Initialize Leaflet Map
 function initMap() {
@@ -89,15 +91,50 @@ function initMap() {
   });
 
   const urlKey = urlParams.get("carto_key") || localStorage.getItem("CARTO_API_KEY") || "";
-  const tileUrl = urlKey
+
+  // 1. ESRI World Dark Gray Canvas (Default: High precision, no API key required, zero watermarks)
+  const esriBase = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}", {
+    attribution: '&copy; Esri &mdash; Esri, DeLorme, NAVTEQ',
+    maxZoom: 16,
+  });
+  const esriRef = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}", {
+    attribution: '&copy; Esri &mdash; Esri, DeLorme, NAVTEQ',
+    maxZoom: 16,
+  });
+  const esriDarkGroup = L.layerGroup([esriBase, esriRef]);
+
+  // 2. CARTO Dark Matter (Enabled with API key)
+  const cartoUrl = urlKey
     ? `https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=${encodeURIComponent(urlKey)}`
     : "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
-
-  mapTileLayer = L.tileLayer(tileUrl, {
-    attribution: '&copy; CartoDB &copy; ASEAN Intelligence',
+  const cartoDark = L.tileLayer(cartoUrl, {
+    attribution: '&copy; CartoDB &copy; OpenStreetMap',
     maxZoom: 19,
     subdomains: "abcd",
-  }).addTo(map);
+  });
+
+  // 3. OpenStreetMap Standard (Free global keyless)
+  const osmStandard = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    attribution: '&copy; OpenStreetMap contributors',
+    maxZoom: 18,
+  });
+
+  // Select active layer: use CARTO if key is explicitly provided, else ESRI Dark Canvas
+  if (urlKey) {
+    cartoDark.addTo(map);
+    mapTileLayer = cartoDark;
+  } else {
+    esriDarkGroup.addTo(map);
+    mapTileLayer = esriDarkGroup;
+  }
+
+  baseLayers = {
+    "ESRI Dark Canvas (Recommended)": esriDarkGroup,
+    "CARTO Dark Matter": cartoDark,
+    "OpenStreetMap Standard": osmStandard,
+  };
+
+  layerControl = L.control.layers(baseLayers, null, { position: "topright" }).addTo(map);
 
   initDensityZones();
 }
@@ -744,8 +781,8 @@ function checkAIStatus() {
           badge.style.color = "#93C5FD";
         }
       }
-      if (data.carto_key && mapTileLayer && !urlParams.get("carto_key")) {
-        mapTileLayer.setUrl(`https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=${encodeURIComponent(data.carto_key)}`);
+      if (data.carto_key && baseLayers["CARTO Dark Matter"] && !urlParams.get("carto_key")) {
+        baseLayers["CARTO Dark Matter"].setUrl(`https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=${encodeURIComponent(data.carto_key)}`);
       }
     }).catch(() => {});
 }

@@ -697,3 +697,31 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+/* Leaflet Layer Switcher Dark Theme */
+.leaflet-control-layers {
+  background: rgba(15, 23, 42, 0.92) !important;
+  backdrop-filter: blur(8px) !important;
+  color: var(--text-main) !important;
+  border: 1px solid var(--border-subtle) !important;
+  border-radius: 8px !important;
+  font-family: var(--font-sans) !important;
+  font-size: 11px !important;
+  padding: 8px 12px !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5) !important;
+}
+
+.leaflet-control-layers-expanded {
+  background: rgba(15, 23, 42, 0.95) !important;
+  color: var(--text-main) !important;
+}
+
+.leaflet-control-layers label {
+  color: var(--text-main) !important;
+  cursor: pointer;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
