@@ -77,6 +77,8 @@ document.addEventListener("DOMContentLoaded", () => {
   startRealtimeClock();
 });
 
+let mapTileLayer = null;
+
 // Initialize Leaflet Map
 function initMap() {
   map = L.map("map", {
@@ -86,7 +88,12 @@ function initMap() {
     maxZoom: 14,
   });
 
-  L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+  const urlKey = urlParams.get("carto_key") || localStorage.getItem("CARTO_API_KEY") || "";
+  const tileUrl = urlKey
+    ? `https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=${encodeURIComponent(urlKey)}`
+    : "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
+
+  mapTileLayer = L.tileLayer(tileUrl, {
     attribution: '&copy; CartoDB &copy; ASEAN Intelligence',
     maxZoom: 19,
     subdomains: "abcd",
@@ -736,6 +743,9 @@ function checkAIStatus() {
           badge.style.background = "rgba(59, 130, 246, 0.2)";
           badge.style.color = "#93C5FD";
         }
+      }
+      if (data.carto_key && mapTileLayer && !urlParams.get("carto_key")) {
+        mapTileLayer.setUrl(`https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=${encodeURIComponent(data.carto_key)}`);
       }
     }).catch(() => {});
 }

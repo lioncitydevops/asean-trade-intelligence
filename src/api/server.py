@@ -266,12 +266,14 @@ async def health_check():
 @app.get("/api/ai-status")
 @app.get("/ai-status")
 async def get_ai_status():
-    """Returns whether a server-side Gemini API key is configured."""
+    """Returns whether server-side Gemini and CARTO API keys are configured."""
     has_key = bool(os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY"))
+    carto_key = os.environ.get("CARTO_API_KEY") or os.environ.get("CARTO_KEY") or ""
     return {
         "ai_enabled": has_key,
         "default_model": "gemini-2.5-flash",
         "supported_models": ["gemini-2.5-flash", "gemini-3.0-flash", "gemini-2.5-pro", "gemini-2.0-flash"],
+        "carto_key": carto_key,
         "timestamp": datetime.now(timezone.utc).isoformat()
     }
 
